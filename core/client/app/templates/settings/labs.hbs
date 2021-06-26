@@ -1,0 +1,306 @@
+<section class="gh-canvas">
+    <GhCanvasHeader class="gh-canvas-header">
+        <h2 class="gh-canvas-title" data-test-screen-title>
+            <LinkTo @route="settings">Settings</LinkTo>
+            <span>{{svg-jar "arrow-right"}}</span>
+            Labs
+        </h2>
+    </GhCanvasHeader>
+
+    <section class="view-container settings-debug">
+        <p class="gh-box gh-box-tip">{{svg-jar "idea"}}This is a testing ground for new or experimental features. They may change, break or inexplicably disappear at any time.</p>
+
+        <div class="gh-main-section">
+            <h4 class="gh-main-section-header small bn">Migration options</h4>
+            <div class="gh-expandable">
+                <div class="gh-expandable-block">
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Import content</h4>
+                            <p class="gh-expandable-description">Import posts from another Ghost installation</p>
+                        </div>
+                        <form id="settings-import" enctype="multipart/form-data">
+                            <GhFileUpload
+                                @id="importfile"
+                                @classNames="flex"
+                                @uploadButtonText={{this.uploadButtonText}}
+                                @onUpload={{action "onUpload"}}
+                                @acceptEncoding={{this.importMimeType}}
+                                data-test-file-input="import"
+                            />
+                        </form>
+                    </div>
+                    {{#if this.importErrors}}
+                        <div class="gh-import-errors {{if this.importSuccessful "gh-import-errors-alert"}}" data-test-import-errors>
+                            <div class="gh-import-errors-title">
+                                {{#if this.importSuccessful}}
+                                    Import successful with warnings
+                                {{else}}
+                                    Import failed
+                                {{/if}}
+                            </div>
+
+                            {{#each this.importErrors as |error|}}
+                                <div class="gh-import-error" data-test-import-error>
+                                    <p class="gh-import-error-message" data-test-import-error-message>
+                                        {{#if error.help}}{{error.help}}: {{/if}}{{error.message}}
+                                    </p>
+
+                                    {{#if error.context}}
+                                        <div class="gh-import-error-entry" data-test-import-error-context>
+                                            <pre>{{error.context}}</pre>
+                                        </div>
+                                    {{/if}}
+                                </div>
+                            {{/each}}
+                        </div>
+                    {{/if}}
+                </div>
+
+                <div class="gh-expandable-block">
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Export your content</h4>
+                            <p class="gh-expandable-description">Download all of your posts and settings in a single, glorious JSON file</p>
+                        </div>
+                        <button type="button" class="gh-btn" {{action "downloadFile" "db"}}><span>Export</span></button>
+                    </div>
+                </div>
+
+                <div class="gh-expandable-block">
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Delete all content</h4>
+                            <p class="gh-expandable-description">Permanently delete all posts and tags from the database, a hard reset</p>
+                        </div>
+                        <button type="button" class="gh-btn gh-btn-red js-delete" {{action "toggleDeleteAllModal"}}><span>Delete</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="gh-main-section">
+            <h4 class="gh-main-section-header small bn">Beta features</h4>
+            <div class="gh-expandable">
+                <div class="gh-expandable-block">
+                    <GhUploader
+                        @extensions={{this.redirectsFileExtensions}}
+                        @uploadUrl="/redirects/upload/"
+                        @paramName="redirects"
+                        @onUploadSuccess={{perform this.redirectUploadResult true}}
+                        @onUploadFailure={{perform this.redirectUploadResult false}}
+                        as |uploader|
+                    >
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Redirects</h4>
+                            <p class="gh-expandable-description">Configure redirects for old or moved content, more info in <a href="https://ghost.org/docs/tutorials/implementing-redirects/">the docs</a></p>
+                        </div>
+                        <div class="gh-setting-action flex flex-column items-end">
+                            {{#if uploader.isUploading}}
+                                {{uploader.progressBar}}
+                            {{else}}
+                                <button
+                                    type="button"
+                                    class="gh-btn gh-btn-icon {{if this.redirectSuccess "gh-btn-green"}} {{if this.redirectFailure "gh-btn-red"}}"
+                                    onclick={{action "triggerFileDialog"}}
+                                    data-test-button="upload-redirects"
+                                >
+                                    <span>
+                                        {{#if this.redirectSuccess}}
+                                            {{svg-jar "check-circle"}} Uploaded
+                                        {{else if this.redirectFailure}}
+                                            {{svg-jar "retry"}} Upload Failed
+                                        {{else}}
+                                            Upload redirects YAML/JSON
+                                        {{/if}}
+                                    </span>
+                                </button>
+                                <div><a href="#" {{action "downloadFile" "redirects/download"}} data-test-link="download-redirects">Download current redirects</a></div>
+                            {{/if}}
+
+                            {{#each uploader.errors as |error|}}
+                                <div class="gh-setting-error" data-test-error="redirects">{{or error.context error.message}}</div>
+                            {{/each}}
+
+                            <div style="display:none">
+                                <GhFileInput @multiple={{false}} @action={{uploader.setFiles}} @accept={{this.redirectsFileMimeTypes}} data-test-file-input="redirects" />
+                            </div>
+                        </div>
+                    </div>
+                    </GhUploader>
+                </div>
+
+                <div class="gh-expandable-block">
+                    <GhUploader
+                        @extensions={{this.yamlExtension}}
+                        @uploadUrl="/settings/routes/yaml/"
+                        @paramName="routes"
+                        @onUploadSuccess={{perform this.routesUploadResult true}}
+                        @onUploadFailure={{perform this.routesUploadResult false}}
+                        as |uploader|
+                    >
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Routes</h4>
+                            <p class="gh-expandable-description">Configure dynamic routing by modifying the routes.yaml file</p>
+                        </div>
+                        <div class="gh-setting-action flex flex-column items-end">
+                            {{#if uploader.isUploading}}
+                                {{uploader.progressBar}}
+                            {{else}}
+                                <button
+                                    type="button"
+                                    class="gh-btn gh-btn-icon {{if this.routesSuccess "gh-btn-green"}} {{if this.routesFailure "gh-btn-red"}}"
+                                    onclick={{action "triggerFileDialog"}}
+                                    data-test-button="upload-routes"
+                                >
+                                    <span>
+                                        {{#if this.routesSuccess}}
+                                            {{svg-jar "check-circle"}} Uploaded
+                                        {{else if this.routesFailure}}
+                                            {{svg-jar "retry"}} Upload Failed
+                                        {{else}}
+                                            Upload routes YAML
+                                        {{/if}}
+                                    </span>
+                                </button>
+                                <div><a href="#" {{action "downloadFile" "settings/routes/yaml"}} data-test-link="download-routes">Download current routes.yaml</a></div>
+                            {{/if}}
+
+                            {{#each uploader.errors as |error|}}
+                                <div class="gh-setting-error" data-test-error="routes">{{or error.context error.message}}</div>
+                            {{/each}}
+
+                            <div style="display:none">
+                                <GhFileInput @multiple={{false}} @action={{uploader.setFiles}} @accept={{this.yamlAccept}} data-test-file-input="routes" />
+                            </div>
+                        </div>
+                    </div>
+                    </GhUploader>
+                </div>
+            </div>
+        </div>
+
+
+        {{#if (enable-developer-experiments)}}
+         <div class="gh-main-section">
+            <h4 class="gh-main-section-header small bn">Alpha Features</h4>
+            <div class="gh-expandable">
+                <div class="gh-expandable-block">
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Google OAuth for staff users</h4>
+                            <p class="gh-expandable-description">
+                                Allow people to sign into Ghost Admin using Google SSO,
+                                {{!-- TODO: create an help desk article and update the url here --}}
+                                <a href="#" target="_blank" rel="noopener">docs here</a>
+                            </p>
+                        </div>
+                        <div class="for-switch">
+                            <label class="switch" for="settings-oauth">
+                                <input
+                                    type="checkbox"
+                                    checked={{this.isOAuthEnabled}}
+                                    id="settings-oauth"
+                                    onclick={{action "toggleIsOAuthEnabled" value="target.checked"}}
+                                    data-test-private-checkbox
+                                >
+                                <span class="input-toggle-component"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="gh-expandable-content">
+                        {{#if this.isOAuthEnabled}}
+                            <div class="gh-setting-content-extended pt2 pb4">
+                                <a href="https://console.developers.google.com/" target="_blank" rel="noopener" class="gh-btn gh-btn-white mb4"><span>{{svg-jar "google-favicon"}}Configure Google OAuth</span></a>
+                                <GhFormGroup @class="no-margin pt2" @errors={{this.settings.errors}} @hasValidated={{this.settings.hasValidated}} @property="password">
+                                    <div class="form-group">
+                                        <label for="aouth-client-id">Google OAuth Client ID</label>
+                                        <GhTextInput
+                                            id="oauth-client-id"
+                                            @value={{readonly this.settings.oauthClientId}}
+                                            @name="oauth-client-id"
+                                            @focus-out={{action "saveOAuthSettings"}}
+                                            @input={{action (mut this.settings.oauthClientId) value="target.value"}}
+                                        />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="oauth-client-secret">Google OAuth Client Secret</label>
+                                        <GhTextInput
+                                            id="oauth-client-secret"
+                                            @value={{readonly this.settings.oauthClientSecret}}
+                                            @name="oauth-client-secret"
+                                            @focus-out={{action "saveOAuthSettings"}}
+                                            @input={{action (mut this.settings.oauthClientSecret) value="target.value"}}
+                                        />
+                                    </div>
+                                </GhFormGroup>
+                            </div>
+                        {{/if}}
+                    </div>
+                </div>
+                <div class="gh-expandable-block">
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Match helper</h4>
+                            <p class="gh-expandable-description">
+                               Experimental <code>\{{match}}</code> helper for themes.
+                            </p>
+                        </div>
+                        <div class="for-switch">
+                           <GhFeatureFlag @flag="matchHelper" />
+                        </div>
+                    </div>
+                </div>
+                <div class="gh-expandable-block">
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Multiple Products</h4>
+                            <p class="gh-expandable-description">
+                               Allow multiple products on site.
+                            </p>
+                        </div>
+                        <div class="for-switch">
+                           <GhFeatureFlag @flag="multipleProducts" />
+                        </div>
+                    </div>
+                </div>
+                <div class="gh-expandable-block">
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Feature image redesign with caption support</h4>
+                            <p class="gh-expandable-description">
+                               Moves feature image uploader to top of editor screen and adds alt/caption input.
+                            </p>
+                        </div>
+                        <div class="for-switch">
+                           <GhFeatureFlag @flag="featureImageMeta" />
+                        </div>
+                    </div>
+                </div>
+                <div class="gh-expandable-block">
+                    <div class="gh-expandable-header">
+                        <div>
+                            <h4 class="gh-expandable-title">Post settings menu behaviour change</h4>
+                            <p class="gh-expandable-description">
+                               Switches post settings menu behaviour from a popover to a collapsible sidebar.
+                            </p>
+                        </div>
+                        <div class="for-switch">
+                           <GhFeatureFlag @flag="psmRedesign" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{/if}}
+    </section>
+</section>
+
+{{#if this.showDeleteAllModal}}
+    <GhFullscreenModal @modal="delete-all"
+        @close={{action "toggleDeleteAllModal"}}
+        @modifier="action wide" />
+{{/if}}

@@ -1,0 +1,87 @@
+name: Test Suite
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'renovate/*'
+jobs:
+  prod-build:
+    runs-on: ubuntu-18.04
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'renovate/'))
+    name: Production Build
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14.16.1'
+
+      - run: yarn
+      - run: grunt shell:ember:prod
+
+      - uses: daniellockyer/action-slack-build@master
+        if: failure() && github.event_name == 'push' && (github.ref == 'refs/heads/4.0' || github.ref == 'refs/heads/master')
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  lint:
+    runs-on: ubuntu-18.04
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'renovate/'))
+    name: Lint
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14.16.1'
+
+      - run: yarn
+      - run: yarn lint:js
+
+      - uses: daniellockyer/action-slack-build@master
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+  test:
+    runs-on: ubuntu-18.04
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'renovate/'))
+    strategy:
+      matrix:
+        browser: [ 'Firefox', 'Chrome' ]
+    name: ${{ matrix.browser }}
+    env:
+      MOZ_HEADLESS: 1
+      JOBS: 1
+      CI: true
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14.16.1'
+
+      - run: yarn
+      - run: yarn test
+        env:
+          BROWSER: ${{ matrix.browser }}
+
+      - uses: daniellockyer/action-slack-build@master
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          status: ${{ job.status }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  canary:
+    runs-on: ubuntu-18.04
+    needs: [lint, test, prod-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Canary
+    steps:
+      - name: Invoke Canary Build
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Canary Build
+          repo: TryGhost/Ghost
+          token: ${{ secrets.WORKFLOW_TOKEN }}
