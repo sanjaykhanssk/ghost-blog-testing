@@ -1,8 +1,8 @@
 {
-    "url": "http://localhost:3500",
+    "url": "http://localhost:3000",
     "server": {
         "host": "127.0.0.1",
-        "port": 3500,
+        "port": 3000,
         "shutdownTimeout": 60000
     },
     "admin": {
